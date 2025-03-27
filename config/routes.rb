@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-MyPluginModule::Engine.routes.draw do
-  get "/examples" => "examples#index"
-  # define routes here
+DiscourseVideoStream::Engine.routes.draw do
+  post "/video-stream/upload-url" => "video_stream#upload_url"
 end
 
-Discourse::Application.routes.draw { mount ::MyPluginModule::Engine, at: "my-plugin" }
+Discourse::Application.routes.draw { mount ::DiscourseVideoStream::Engine, at: "/" }

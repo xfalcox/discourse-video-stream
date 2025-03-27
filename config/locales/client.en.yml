@@ -7,3 +7,8 @@ en:
   js:
     discourse_plugin_name:
       placeholder: placeholder
+    video_stream:
+      upload_video: "Upload Video"
+      upload_failed: "Failed to upload video. Please try again."
+      upload_progress: "Uploading video... {{progress}}%"
+      upload_description: "Click the button below to select and upload a video file"

@@ -1,4 +1,21 @@
-TODO_plugin_name:
-  plugin_name_enabled:
+plugins:
+  video_stream_enabled:
     default: false
     client: true
+  video_stream_account_id:
+    default: ""
+    client: false
+  video_stream_api_token:
+    default: ""
+    client: false
+  video_stream_customer_subdomain:
+    default: ""
+    client: true
+  video_stream_allowed_extensions:
+    default: "mp4,webm,mov"
+    client: true
+  video_stream_max_file_size:
+    default: 500
+    client: true
+    min: 1
+    max: 2000

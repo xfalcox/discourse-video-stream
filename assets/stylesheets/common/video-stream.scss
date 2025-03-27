@@ -1,0 +1,64 @@
+.video-stream-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.5em 1em;
+  cursor: pointer;
+  
+  .d-icon {
+    font-size: 1.2em;
+  }
+}
+
+.video-upload-modal {
+  .video-upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1em;
+    padding: 1em;
+    text-align: center;
+
+    p {
+      margin: 0;
+      color: var(--primary-medium);
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+  }
+}
+
+.video-stream-upload-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  padding: 1em;
+  
+  .progress-bar {
+    width: 100%;
+    height: 4px;
+    background-color: var(--primary-low);
+    border-radius: 2px;
+    overflow: hidden;
+    
+    .progress {
+      height: 100%;
+      background-color: var(--tertiary);
+      transition: width 0.3s ease;
+    }
+  }
+  
+  .progress-text {
+    font-size: 0.9em;
+    color: var(--primary-medium);
+  }
+} 
+
+iframe[src*="cloudflarestream"] {
+  width: 100%;
+  aspect-ratio: 16/9;
+}
