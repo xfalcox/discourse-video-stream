@@ -1,10 +1,9 @@
 import { withPluginApi } from "discourse/lib/plugin-api";
-import { computed } from "@ember/object";
 import VideoUploadModal from "../discourse/components/modal/video-upload-modal";
 
 function initializeVideoUploader(api) {
   const modal = api.container.lookup("service:modal");
-  const settings = api.container.lookup("service:site-settings");
+  const siteSettings = api.container.lookup("service:site-settings");
 
   api.onToolbarCreate((toolbar) => {
     toolbar.addButton({
@@ -13,15 +12,19 @@ function initializeVideoUploader(api) {
       icon: "video",
       title: "video_stream.upload_video",
       shortcut: "ALT+V",
-      sendAction: (toolbarEvent) => {
+      sendAction(toolbarEvent) {
         modal.show(VideoUploadModal, {
           model: {
-            toolbarEvent: toolbarEvent,
-            customerSubdomain: settings.video_stream_customer_subdomain
-          }
+            toolbarEvent,
+          },
         });
       },
-      condition: () => api.container.lookup("service:site-settings").video_stream_enabled
+      condition() {
+        return (
+          siteSettings.video_stream_enabled &&
+          siteSettings.video_stream_customer_subdomain
+        );
+      },
     });
   });
 }
@@ -29,6 +32,6 @@ function initializeVideoUploader(api) {
 export default {
   name: "video-stream-composer",
   initialize() {
-    withPluginApi("1.1.0", initializeVideoUploader);
-  }
-}; 
+    withPluginApi(initializeVideoUploader);
+  },
+};

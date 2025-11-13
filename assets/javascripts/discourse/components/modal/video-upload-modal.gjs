@@ -1,100 +1,346 @@
 import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
+import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
-import { on } from "@ember/modifier";
-import { fn } from "@ember/helper";
-import withEventValue from "discourse/helpers/with-event-value";
-import DModal from "discourse/components/d-modal";
+import { htmlSafe } from "@ember/template";
+import Uppy from "@uppy/core";
 import DButton from "discourse/components/d-button";
-import dIcon from "discourse/helpers/d-icon";
+import DModal from "discourse/components/d-modal";
 import { i18n } from "discourse-i18n";
+import Tus from "../../../../lib/vendor/@uppy/tus/index";
 
+const BYTES_IN_MEGABYTE = 1_000_000;
+const DEFAULT_TUS_CHUNK_SIZE = 52_428_800; // 50 MB, divisible by 256 KiB
+const TUS_ENDPOINT = "/video-stream/upload-url";
+const UPPY_SOURCE = "video-stream-modal";
+
+/**
+ * @component video-upload-modal
+ * @param {{ toolbarEvent?: { addText?: (value: string) => void } }} this.args.model
+ */
 export default class VideoUploadModal extends Component {
-  @service modal;
+  @service siteSettings;
+  @service toasts;
+
+  /**
+   * @type {boolean}
+   */
   @tracked isUploading = false;
+
+  /**
+   * @type {number}
+   */
   @tracked uploadProgress = 0;
 
-  constructor() {
-    super(...arguments);
+  uppyInstance = null;
+  latestStreamMediaId = null;
+
+  willDestroy() {
+    super.willDestroy?.();
+    this.uppyInstance?.close({ reason: "video-stream-modal-destroyed" });
+    this.uppyInstance = null;
   }
 
-  @action
-  async uploadVideo(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+  /**
+   * @returns {string|undefined}
+   */
+  get customerSubdomain() {
+    return this.siteSettings.video_stream_customer_subdomain?.trim();
+  }
 
-    this.isUploading = true;
-    this.uploadProgress = 0;
+  /**
+   * @returns {string[]}
+   */
+  get allowedExtensions() {
+    return (
+      this.siteSettings.video_stream_allowed_extensions
+        ?.split(",")
+        .map((ext) => ext.trim().toLowerCase())
+        .filter(Boolean) ?? []
+    );
+  }
 
-    try {
-      // Get the upload URL from our backend
-      const response = await fetch("/video-stream/upload-url.json", {
-        method: "POST",
-        headers: {
-          "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content,
+  /**
+   * @returns {number}
+   */
+  get maxFileSizeBytes() {
+    return (
+      Number(this.siteSettings.video_stream_max_file_size || 0) *
+      BYTES_IN_MEGABYTE
+    );
+  }
+
+  /**
+   * @returns {string[]}
+   */
+  get uppyAllowedFileTypes() {
+    if (!this.allowedExtensions.length) {
+      return ["video/*"];
+    }
+
+    return this.allowedExtensions.map((ext) => `.${ext}`);
+  }
+
+  /**
+   * @returns {number}
+   */
+  get chunkSize() {
+    return DEFAULT_TUS_CHUNK_SIZE;
+  }
+
+  get progressStyle() {
+    return htmlSafe(`width: ${this.uploadProgress}%`);
+  }
+
+  /**
+   * @param {HTMLInputElement} target
+   */
+  resetInputValue(target) {
+    if (target) {
+      target.value = "";
+    }
+  }
+
+  /**
+   * @param {string} key
+   * @param {Record<string, unknown>} interpolations
+   */
+  showToast(key, interpolations = {}) {
+    this.toasts.error({
+      duration: "short",
+      data: { message: i18n(key, interpolations) },
+    });
+  }
+
+  /**
+   * @param {File} file
+   * @returns {boolean}
+   */
+  validateFilePresence(file) {
+    if (file) {
+      return true;
+    }
+
+    this.showToast("video_stream.upload_failed");
+    return false;
+  }
+
+  /**
+   * @returns {boolean}
+   */
+  validateConfiguration() {
+    if (this.customerSubdomain) {
+      return true;
+    }
+
+    this.showToast("video_stream.subdomain_missing");
+    return false;
+  }
+
+  /**
+   * @param {File} file
+   * @returns {boolean}
+   */
+  validateExtension(file) {
+    if (!this.allowedExtensions.length) {
+      return true;
+    }
+
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    if (extension && this.allowedExtensions.includes(extension)) {
+      return true;
+    }
+
+    this.showToast("video_stream.invalid_extension", {
+      extensions: this.allowedExtensions.join(", "),
+    });
+    return false;
+  }
+
+  /**
+   * @param {File} file
+   * @returns {boolean}
+   */
+  validateFileSize(file) {
+    if (!this.maxFileSizeBytes) {
+      return true;
+    }
+
+    if (file.size <= this.maxFileSizeBytes) {
+      return true;
+    }
+
+    this.showToast("video_stream.file_too_large", {
+      max_size_mb: this.siteSettings.video_stream_max_file_size,
+    });
+    return false;
+  }
+
+  /**
+   * @param {{ uid: string }} result
+   */
+  insertEmbed(result) {
+    const toolbarEvent = this.args.model?.toolbarEvent;
+
+    if (!toolbarEvent?.addText) {
+      this.showToast("video_stream.missing_toolbar_event");
+      return;
+    }
+
+    const subdomain = this.customerSubdomain;
+    const uid = encodeURIComponent(result.uid);
+    const embedUrl = `https://${subdomain}/${uid}/iframe`;
+    const iframe = `\n\n<iframe class="cf-video-stream-embed" data-video-stream="true" src="${embedUrl}" title="${i18n(
+      "video_stream.embed_title"
+    )}" allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" allowfullscreen></iframe>\n\n`;
+
+    toolbarEvent.addText(iframe);
+    this.args.closeModal?.();
+  }
+
+  /**
+   * @returns {Uppy<Uppy.StrictTypes>}
+   */
+  get uploader() {
+    if (!this.uppyInstance) {
+      this.uppyInstance = this._createUploader();
+    }
+
+    return this.uppyInstance;
+  }
+
+  _createUploader() {
+    const uppy = new Uppy({
+      autoProceed: true,
+      allowMultipleUploads: false,
+      restrictions: {
+        maxNumberOfFiles: 1,
+        allowedFileTypes: this.uppyAllowedFileTypes,
+        maxFileSize: this.maxFileSizeBytes || null,
+      },
+    });
+
+    uppy.use(Tus, {
+      endpoint: TUS_ENDPOINT,
+      chunkSize: this.chunkSize,
+      retryDelays: [0, 2000, 5000, 10000],
+      limit: 1,
+      removeFingerprintOnSuccess: true,
+      onAfterResponse: (req, res) => {
+        if (req?.getMethod?.() === "POST") {
+          this.latestStreamMediaId =
+            res?.getHeader?.("stream-media-id") || null;
         }
-      });
 
-      if (!response.ok) throw new Error("Failed to get upload URL");
-      const result = await response.json();
+        return Promise.resolve();
+      },
+    });
 
-      // Now upload directly to Cloudflare Stream
-      const uploadUrl = result.uploadURL;
-      const formData = new FormData();
-      formData.append("file", file);
+    uppy.on("upload", () => {
+      this.isUploading = true;
+      this.uploadProgress = 0;
+    });
 
-      const xhr = new XMLHttpRequest();
-      
-      // Set up progress tracking
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const progress = (event.loaded / event.total) * 100;
-          this.uploadProgress = Math.round(progress);
-        }
-      };
+    uppy.on("upload-progress", (_file, progress) => {
+      if (progress?.bytesTotal) {
+        this.uploadProgress = Math.round(
+          (progress.bytesUploaded / progress.bytesTotal) * 100
+        );
+      }
+    });
 
-      // Set up promise to handle the upload
-      const uploadPromise = new Promise((resolve, reject) => {
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
-          } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
-          }
-        };
-        xhr.onerror = () => reject(new Error("Upload failed"));
-      });
+    uppy.on("upload-success", (_file, response) => {
+      this._handleUploadSuccess(response);
+    });
 
-      // Start the upload
-      xhr.open("POST", uploadUrl, true);
-      xhr.send(formData);
+    uppy.on("upload-error", (_file, error) => {
+      this._handleUploadFailure(error);
+    });
 
-      // Wait for upload to complete
-      await uploadPromise;
+    uppy.on("error", (error) => {
+      this._handleUploadFailure(error);
+    });
 
-      // Insert the video player iframe into the composer
-      const videoEmbed = `\n\n<iframe
-        src="https://${this.args.model.customerSubdomain}/${result.uid}/iframe"
-        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-        allowfullscreen="true">
-        </iframe>\n\n`;
-
-      this.args.closeModal();
-      this.args.model.toolbarEvent.addText(videoEmbed);
-      
-    } catch (error) {
-      console.error("Upload failed:", error);
-      const toasts = this.modal.container.lookup("service:toasts");
-      toasts.error({
-        duration: 3000,
-        data: {
-          message: "video_stream.upload_failed"
-        }
-      });
-    } finally {
+    uppy.on("complete", () => {
       this.isUploading = false;
       this.uploadProgress = 0;
+    });
+
+    return uppy;
+  }
+
+  _handleUploadSuccess(response) {
+    const uid =
+      this.latestStreamMediaId || this._extractUidFromUrl(response?.uploadURL);
+
+    if (!uid) {
+      this.showToast("video_stream.upload_failed");
+      this.resetUploaderState();
+      return;
+    }
+
+    this.insertEmbed({ uid });
+    this.resetUploaderState();
+  }
+
+  _handleUploadFailure(error) {
+    if (error) {
+      // eslint-disable-next-line no-console
+      console.error("Video upload failed", error);
+    }
+
+    this.showToast("video_stream.upload_failed");
+    this.resetUploaderState();
+  }
+
+  resetUploaderState() {
+    this.latestStreamMediaId = null;
+    this.uppyInstance?.reset();
+  }
+
+  _extractUidFromUrl(url) {
+    if (!url) {
+      return;
+    }
+
+    const segments = url.split("/").filter(Boolean);
+    return segments[segments.length - 1];
+  }
+
+  /**
+   * @action
+   * @param {InputEvent & { target: HTMLInputElement }} event
+   */
+  @action
+  uploadVideo(event) {
+    const file = event.target?.files?.[0];
+
+    if (
+      !this.validateFilePresence(file) ||
+      !this.validateConfiguration() ||
+      !this.validateExtension(file) ||
+      !this.validateFileSize(file)
+    ) {
+      this.resetInputValue(event.target);
+      return;
+    }
+
+    try {
+      const uppy = this.uploader;
+      this.resetUploaderState();
+      uppy.addFile({
+        name: file.name,
+        type: file.type,
+        data: file,
+        source: UPPY_SOURCE,
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Video upload failed", error);
+      this.showToast("video_stream.upload_failed");
+    } finally {
+      this.resetInputValue(event.target);
     }
   }
 
@@ -108,9 +354,14 @@ export default class VideoUploadModal extends Component {
         {{#if this.isUploading}}
           <div class="video-stream-upload-progress">
             <div class="progress-bar">
-              <div class="progress" style="width: {{this.uploadProgress}}%"></div>
+              <div class="progress" style={{this.progressStyle}}></div>
             </div>
-            <span class="progress-text">{{i18n "video_stream.upload_progress" progress=this.uploadProgress}}</span>
+            <span class="progress-text">
+              {{i18n
+                "video_stream.upload_progress"
+                progress=this.uploadProgress
+              }}
+            </span>
           </div>
         {{else}}
           <div class="video-upload-content">
@@ -118,8 +369,8 @@ export default class VideoUploadModal extends Component {
             <input
               type="file"
               accept="video/*"
-              {{on "change" this.uploadVideo}}
               class="btn btn-primary"
+              {{on "change" this.uploadVideo}}
             />
           </div>
         {{/if}}
@@ -127,11 +378,7 @@ export default class VideoUploadModal extends Component {
 
       <:footer>
         {{#unless this.isUploading}}
-          <DButton
-            class="btn-flat"
-            @action={{@closeModal}}
-            @label="cancel"
-          />
+          <DButton class="btn-flat" @action={{@closeModal}} @label="cancel" />
         {{/unless}}
       </:footer>
     </DModal>

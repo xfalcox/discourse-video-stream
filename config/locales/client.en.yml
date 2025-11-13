@@ -3,12 +3,15 @@ en:
     admin:
       site_settings:
         categories:
-          TODO_plugin_name: "Plugin Name"
+          video_stream: "Video streaming"
   js:
-    discourse_plugin_name:
-      placeholder: placeholder
     video_stream:
-      upload_video: "Upload Video"
+      upload_video: "Upload video"
       upload_failed: "Failed to upload video. Please try again."
-      upload_progress: "Uploading video... {{progress}}%"
-      upload_description: "Click the button below to select and upload a video file"
+      upload_progress: "Uploading video... %{progress}%"
+      upload_description: "Select a video file to upload directly to Cloudflare Stream."
+      invalid_extension: "Only the following video formats are allowed: %{extensions}"
+      file_too_large: "The selected file exceeds the %{max_size_mb} MB limit."
+      subdomain_missing: "Video streaming is not fully configured yet. Please contact site staff."
+      missing_toolbar_event: "We could not insert the video into the composer. Please try again."
+      embed_title: "Embedded video player"
