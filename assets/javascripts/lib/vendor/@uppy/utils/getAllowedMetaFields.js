@@ -1,0 +1,10 @@
+/* eslint-disable */
+export default function getAllowedMetaFields(fields, meta) {
+  if (fields === true) {
+    return Object.keys(meta);
+  }
+  if (Array.isArray(fields)) {
+    return fields;
+  }
+  return [];
+}

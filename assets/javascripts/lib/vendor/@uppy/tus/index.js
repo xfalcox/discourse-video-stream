@@ -1,17 +1,18 @@
+/* eslint-disable */
 function _classPrivateFieldLooseBase(e, t) { if (!{}.hasOwnProperty.call(e, t)) throw new TypeError("attempted to use private field on non-instance"); return e; }
 var id = 0;
 function _classPrivateFieldLooseKey(e) { return "__private_" + id++ + "_" + e; }
-import BasePlugin from '@uppy/core/lib/BasePlugin.js';
-import * as tus from '../../tus-js-client/lib.esm/browser/index.js';
-import EventManager from '@uppy/core/lib/EventManager.js';
-import NetworkError from '@uppy/utils/lib/NetworkError';
-import isNetworkError from '@uppy/utils/lib/isNetworkError';
+import BasePlugin from '../core/BasePlugin.js';
+import EventManager from '../core/EventManager.js';
+import NetworkError from '../utils/NetworkError.js';
+import isNetworkError from '../utils/isNetworkError.js';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore untyped
-import { RateLimitedQueue } from '@uppy/utils/lib/RateLimitedQueue';
-import hasProperty from '@uppy/utils/lib/hasProperty';
-import { filterNonFailedFiles, filterFilesToEmitUploadStarted } from '@uppy/utils/lib/fileFilters';
-import getAllowedMetaFields from '@uppy/utils/lib/getAllowedMetaFields';
+import { RateLimitedQueue } from '../utils/RateLimitedQueue.js';
+import hasProperty from '../utils/hasProperty.js';
+import { filterNonFailedFiles, filterFilesToEmitUploadStarted } from '../utils/fileFilters.js';
+import getAllowedMetaFields from '../utils/getAllowedMetaFields.js';
+import * as tus from '../../tus-js-client/lib.esm/browser/index.js';
 import getFingerprint from "./getFingerprint.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
