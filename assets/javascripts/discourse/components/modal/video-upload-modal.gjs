@@ -8,7 +8,7 @@ import Uppy from "@uppy/core";
 import DButton from "discourse/components/d-button";
 import DModal from "discourse/components/d-modal";
 import { i18n } from "discourse-i18n";
-import Tus from "../../../../lib/vendor/@uppy/tus/index";
+import Tus from "../../../lib/vendor/@uppy/tus/index";
 
 const BYTES_IN_MEGABYTE = 1_000_000;
 const DEFAULT_TUS_CHUNK_SIZE = 52_428_800; // 50 MB, divisible by 256 KiB
