@@ -7,7 +7,6 @@ import { htmlSafe } from "@ember/template";
 import DButton from "discourse/components/d-button";
 import DModal from "discourse/components/d-modal";
 import { i18n } from "discourse-i18n";
-import { Upload } from "../../../lib/vendor/tus-js-client/browser/index";
 
 const BYTES_IN_MEGABYTE = 1_000_000;
 const DEFAULT_TUS_CHUNK_SIZE = 52_428_800; // 50 MB, divisible by 256 KiB
@@ -205,7 +204,12 @@ export default class VideoUploadModal extends Component {
     this.isUploading = true;
     this.uploadProgress = 0;
 
-    const upload = new Upload(file, {
+    const TusUpload = this._getTusUploadClass();
+    if (!TusUpload) {
+      throw new Error("tus-js-client global is unavailable");
+    }
+
+    const upload = new TusUpload(file, {
       endpoint: TUS_ENDPOINT,
       chunkSize: this.chunkSize,
       retryDelays: [0, 2000, 5000, 10000],
@@ -295,6 +299,14 @@ export default class VideoUploadModal extends Component {
     }
 
     return metadata;
+  }
+
+  _getTusUploadClass() {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    return window?.tus?.Upload || null;
   }
 
   _extractUidFromUrl(url) {
