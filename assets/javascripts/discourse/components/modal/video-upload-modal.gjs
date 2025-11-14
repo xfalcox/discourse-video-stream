@@ -215,7 +215,18 @@ export default class VideoUploadModal extends Component {
       retryDelays: [0, 2000, 5000, 10000],
       removeFingerprintOnSuccess: true,
       metadata: this._tusMetadata(file),
-      headers: this._tusHeaders(),
+      onBeforeRequest: (req) => {
+        const url = req.getURL();
+        // Only add CSRF token for requests to Discourse backend (relative URLs)
+        // Don't add it for Cloudflare Stream requests (absolute URLs)
+        if (url && url.startsWith("/")) {
+          const token = this._csrfToken();
+          if (token) {
+            req.setHeader("X-CSRF-Token", token);
+          }
+        }
+        return Promise.resolve();
+      },
       onAfterResponse: (req, res) => {
         if (req?.getMethod?.() === "POST") {
           this.latestStreamMediaId =
@@ -226,9 +237,7 @@ export default class VideoUploadModal extends Component {
       },
       onProgress: (bytesUploaded, bytesTotal) => {
         if (bytesTotal) {
-          this.uploadProgress = Math.round(
-            (bytesUploaded / bytesTotal) * 100
-          );
+          this.uploadProgress = Math.round((bytesUploaded / bytesTotal) * 100);
         }
       },
       onSuccess: () => {
@@ -316,18 +325,6 @@ export default class VideoUploadModal extends Component {
     }
 
     return document.querySelector("meta[name='csrf-token']")?.content || null;
-  }
-
-  _tusHeaders() {
-    const token = this._csrfToken();
-
-    if (!token) {
-      return {};
-    }
-
-    return {
-      "X-CSRF-Token": token,
-    };
   }
 
   _extractUidFromUrl(url) {
