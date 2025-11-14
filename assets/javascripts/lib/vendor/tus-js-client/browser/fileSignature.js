@@ -1,4 +1,4 @@
-import isReactNative from './isReactNative.js';
+import isReactNative from './isReactNative';
 
 // TODO: Differenciate between input types
 

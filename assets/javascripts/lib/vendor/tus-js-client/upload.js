@@ -19,9 +19,9 @@ function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" 
 function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 import { Base64 } from 'js-base64';
 import URL from 'url-parse';
-import DetailedError from './error.js';
-import { log } from './logger.js';
-import uuid from './uuid.js';
+import DetailedError from './error';
+import { log } from './logger';
+import uuid from './uuid';
 var PROTOCOL_TUS_V1 = 'tus-v1';
 var PROTOCOL_IETF_DRAFT_03 = 'ietf-draft-03';
 var PROTOCOL_IETF_DRAFT_05 = 'ietf-draft-05';
