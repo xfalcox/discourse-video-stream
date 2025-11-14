@@ -12,7 +12,7 @@ import { RateLimitedQueue } from '../utils/RateLimitedQueue.js';
 import hasProperty from '../utils/hasProperty.js';
 import { filterNonFailedFiles, filterFilesToEmitUploadStarted } from '../utils/fileFilters.js';
 import getAllowedMetaFields from '../utils/getAllowedMetaFields.js';
-import * as tus from '../../tus-js-client/lib.esm/browser/index.js';
+import * as tus from '../../tus-js-client/browser/index.js';
 import getFingerprint from "./getFingerprint.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
