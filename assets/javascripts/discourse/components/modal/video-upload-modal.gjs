@@ -10,7 +10,7 @@ import { i18n } from "discourse-i18n";
 
 const BYTES_IN_MEGABYTE = 1_000_000;
 const DEFAULT_TUS_CHUNK_SIZE = 52_428_800; // 50 MB, divisible by 256 KiB
-const TUS_ENDPOINT = "/video-stream/upload-url";
+const TUS_ENDPOINT = "/video-stream/upload-url.json";
 
 /**
  * @component video-upload-modal
