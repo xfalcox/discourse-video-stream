@@ -6,7 +6,7 @@ Discourse Video Stream adds a Cloudflare Stream-powered workflow for uploading a
 
 - Optional composer toolbar button gated by the `video_stream_enabled` site setting
 - Direct-upload modal with client-side validation for file size and extension
-- Resumable Cloudflare Stream uploads powered by Uppy+tus for files well beyond 200 MB
+- Resumable Cloudflare Stream uploads powered by tus-js-client for files well beyond 200 MB
 - Secure server endpoint that proxies short‑lived Cloudflare Stream upload URLs
 - Configurable iframe embeds that respect your Cloudflare Stream subdomain
 

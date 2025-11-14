@@ -4,17 +4,14 @@ import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
 import { htmlSafe } from "@ember/template";
-import "../../../lib/shims/uppy-core";
-import Uppy from "@uppy/core";
 import DButton from "discourse/components/d-button";
 import DModal from "discourse/components/d-modal";
 import { i18n } from "discourse-i18n";
-import Tus from "../../../lib/vendor/@uppy/tus/index";
+import { Upload } from "../../../lib/vendor/tus-js-client/browser/index";
 
 const BYTES_IN_MEGABYTE = 1_000_000;
 const DEFAULT_TUS_CHUNK_SIZE = 52_428_800; // 50 MB, divisible by 256 KiB
 const TUS_ENDPOINT = "/video-stream/upload-url";
-const UPPY_SOURCE = "video-stream-modal";
 
 /**
  * @component video-upload-modal
@@ -34,13 +31,12 @@ export default class VideoUploadModal extends Component {
    */
   @tracked uploadProgress = 0;
 
-  uppyInstance = null;
+  activeUpload = null;
   latestStreamMediaId = null;
 
   willDestroy() {
     super.willDestroy?.();
-    this.uppyInstance?.close({ reason: "video-stream-modal-destroyed" });
-    this.uppyInstance = null;
+    this.resetUploaderState({ abortUpload: true });
   }
 
   /**
@@ -81,6 +77,10 @@ export default class VideoUploadModal extends Component {
     }
 
     return this.allowedExtensions.map((ext) => `.${ext}`);
+  }
+
+  get fileInputAccept() {
+    return this.uppyAllowedFileTypes.join(",");
   }
 
   /**
@@ -200,34 +200,17 @@ export default class VideoUploadModal extends Component {
     this.args.closeModal?.();
   }
 
-  /**
-   * @returns {Uppy<Uppy.StrictTypes>}
-   */
-  get uploader() {
-    if (!this.uppyInstance) {
-      this.uppyInstance = this._createUploader();
-    }
+  _startTusUpload(file) {
+    this.resetUploaderState({ abortUpload: true });
+    this.isUploading = true;
+    this.uploadProgress = 0;
 
-    return this.uppyInstance;
-  }
-
-  _createUploader() {
-    const uppy = new Uppy({
-      autoProceed: true,
-      allowMultipleUploads: false,
-      restrictions: {
-        maxNumberOfFiles: 1,
-        allowedFileTypes: this.uppyAllowedFileTypes,
-        maxFileSize: this.maxFileSizeBytes || null,
-      },
-    });
-
-    uppy.use(Tus, {
+    const upload = new Upload(file, {
       endpoint: TUS_ENDPOINT,
       chunkSize: this.chunkSize,
       retryDelays: [0, 2000, 5000, 10000],
-      limit: 1,
       removeFingerprintOnSuccess: true,
+      metadata: this._tusMetadata(file),
       onAfterResponse: (req, res) => {
         if (req?.getMethod?.() === "POST") {
           this.latestStreamMediaId =
@@ -236,39 +219,35 @@ export default class VideoUploadModal extends Component {
 
         return Promise.resolve();
       },
+      onProgress: (bytesUploaded, bytesTotal) => {
+        if (bytesTotal) {
+          this.uploadProgress = Math.round(
+            (bytesUploaded / bytesTotal) * 100
+          );
+        }
+      },
+      onSuccess: () => {
+        this._handleUploadSuccess({ uploadURL: upload.url });
+      },
+      onError: (error) => {
+        this._handleUploadFailure(error);
+      },
     });
 
-    uppy.on("upload", () => {
-      this.isUploading = true;
-      this.uploadProgress = 0;
-    });
+    this.activeUpload = upload;
 
-    uppy.on("upload-progress", (_file, progress) => {
-      if (progress?.bytesTotal) {
-        this.uploadProgress = Math.round(
-          (progress.bytesUploaded / progress.bytesTotal) * 100
-        );
-      }
-    });
+    upload
+      .findPreviousUploads()
+      .then((previousUploads) => {
+        if (previousUploads?.length) {
+          upload.resumeFromPreviousUpload(previousUploads[0]);
+        }
 
-    uppy.on("upload-success", (_file, response) => {
-      this._handleUploadSuccess(response);
-    });
-
-    uppy.on("upload-error", (_file, error) => {
-      this._handleUploadFailure(error);
-    });
-
-    uppy.on("error", (error) => {
-      this._handleUploadFailure(error);
-    });
-
-    uppy.on("complete", () => {
-      this.isUploading = false;
-      this.uploadProgress = 0;
-    });
-
-    return uppy;
+        upload.start();
+      })
+      .catch((error) => {
+        this._handleUploadFailure(error);
+      });
   }
 
   _handleUploadSuccess(response) {
@@ -295,9 +274,27 @@ export default class VideoUploadModal extends Component {
     this.resetUploaderState();
   }
 
-  resetUploaderState() {
+  resetUploaderState({ abortUpload = false } = {}) {
+    if (abortUpload) {
+      this.activeUpload?.abort();
+    }
+
+    this.activeUpload = null;
     this.latestStreamMediaId = null;
-    this.uppyInstance?.reset();
+    this.isUploading = false;
+    this.uploadProgress = 0;
+  }
+
+  _tusMetadata(file) {
+    const metadata = {
+      filename: file.name,
+    };
+
+    if (file.type) {
+      metadata.filetype = file.type;
+    }
+
+    return metadata;
   }
 
   _extractUidFromUrl(url) {
@@ -328,14 +325,7 @@ export default class VideoUploadModal extends Component {
     }
 
     try {
-      const uppy = this.uploader;
-      this.resetUploaderState();
-      uppy.addFile({
-        name: file.name,
-        type: file.type,
-        data: file,
-        source: UPPY_SOURCE,
-      });
+      this._startTusUpload(file);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error("Video upload failed", error);
@@ -369,7 +359,7 @@ export default class VideoUploadModal extends Component {
             <p>{{i18n "video_stream.upload_description"}}</p>
             <input
               type="file"
-              accept="video/*"
+              accept={{this.fileInputAccept}}
               class="btn btn-primary"
               {{on "change" this.uploadVideo}}
             />
