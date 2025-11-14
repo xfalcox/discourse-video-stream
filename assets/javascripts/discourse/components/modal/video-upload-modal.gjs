@@ -215,6 +215,7 @@ export default class VideoUploadModal extends Component {
       retryDelays: [0, 2000, 5000, 10000],
       removeFingerprintOnSuccess: true,
       metadata: this._tusMetadata(file),
+      headers: this._tusHeaders(),
       onAfterResponse: (req, res) => {
         if (req?.getMethod?.() === "POST") {
           this.latestStreamMediaId =
@@ -307,6 +308,26 @@ export default class VideoUploadModal extends Component {
     }
 
     return window?.tus?.Upload || null;
+  }
+
+  _csrfToken() {
+    if (typeof document === "undefined") {
+      return null;
+    }
+
+    return document.querySelector("meta[name='csrf-token']")?.content || null;
+  }
+
+  _tusHeaders() {
+    const token = this._csrfToken();
+
+    if (!token) {
+      return {};
+    }
+
+    return {
+      "X-CSRF-Token": token,
+    };
   }
 
   _extractUidFromUrl(url) {
