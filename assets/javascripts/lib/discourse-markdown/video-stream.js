@@ -33,11 +33,9 @@ export function setup(helper) {
   ]);
 
   helper.registerPlugin((md) => {
-    const rule = {
+    md.core.textPostProcess.ruler.push("video-stream", {
       matcher: /\[video-stream id="([a-zA-Z0-9_-]+)"\]/,
       onMatch: addVideoStream,
-    };
-
-    md.core.textPostProcess.ruler.push("video-stream", rule);
+    });
   });
 }
