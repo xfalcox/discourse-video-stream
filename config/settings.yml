@@ -19,3 +19,11 @@ plugins:
     client: true
     min: 1
     max: 2000
+  video_stream_intercept_native_uploads:
+    default: true
+    client: true
+  video_stream_intercept_threshold_mb:
+    default: 10
+    client: true
+    min: 1
+    max: 2000

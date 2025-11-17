@@ -1,14 +1,15 @@
 # Discourse Video Stream
 
-Discourse Video Stream adds a Cloudflare Stream-powered workflow for uploading and embedding long‑form video in the composer. Editors can upload large files directly from the composer toolbar and the plugin injects an iframe embed once Cloudflare receives the file.
+Discourse Video Stream adds a Cloudflare Stream-powered workflow for uploading and embedding long‑form video in the composer. Editors can upload large files directly from the composer toolbar and the plugin uses a custom BBCode syntax with Shaka Player for adaptive streaming playback.
 
 ## Features
 
 - Optional composer toolbar button gated by the `video_stream_enabled` site setting
 - Direct-upload modal with client-side validation for file size and extension
-- Resumable Cloudflare Stream uploads powered by the global `tus-js-client` build for files well beyond 200 MB
+- Resumable Cloudflare Stream uploads powered by vendored `tus-js-client` for files well beyond 200 MB
 - Secure server endpoint that proxies short‑lived Cloudflare Stream upload URLs
-- Configurable iframe embeds that respect your Cloudflare Stream subdomain
+- Custom BBCode syntax `[video-stream id="..."]` for embedding videos
+- Adaptive bitrate streaming using vendored Shaka Player with DASH manifests
 
 ## Setup
 
@@ -16,16 +17,14 @@ Discourse Video Stream adds a Cloudflare Stream-powered workflow for uploading a
 2. Enable the **Video streaming** category of site settings and provide:
    - `video_stream_account_id`: Cloudflare account identifier
    - `video_stream_api_token`: API token with Stream permissions
-   - `video_stream_customer_subdomain`: Domain used for iframe playback (for example, `example.cloudflarestream.com`)
+   - `video_stream_customer_subdomain`: Domain used for playback (for example, `customer-xxxxx.cloudflarestream.com`)
    - Optional: adjust allowed extensions and max file size (MB)
 3. Grant users appropriate upload permissions (`can_upload_external?` governs access to the endpoint).
-4. Ensure the tus client script is available on every page. The plugin expects `window.tus` to exist, so add the CDN build to your head tag (via a theme component or customization):
 
-   ```html
-   <script src="https://cdn.jsdelivr.net/npm/tus-js-client@latest/dist/tus.min.js"></script>
-   ```
-
-Once configured, staff (or any user that can upload externally) will see a camcorder icon in the composer toolbar. Uploading a file will render a responsive iframe in the composer so it can be included in the post body.
+Once configured:
+- **Automatic interception**: Video files uploaded via drag & drop or the native upload button that exceed the configured size threshold will automatically be uploaded to Cloudflare Stream
+- **Manual upload**: Users can access the video upload option from the composer toolbar popup menu (three dots) for explicit Cloudflare Stream uploads
+- Uploaded videos are inserted as BBCode `[video-stream id="video_id"]` which renders as an adaptive streaming video player using Shaka Player
 
 ## Development
 

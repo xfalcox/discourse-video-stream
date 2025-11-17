@@ -13,6 +13,10 @@ enabled_site_setting :video_stream_enabled
 # Cloudflare Stream API settings
 register_asset "stylesheets/common/video-stream.scss"
 
+# Register vendored JavaScript libraries
+register_asset "javascripts/shaka-player.compiled.js", :vendored_pretty_text
+register_asset "javascripts/tus.min.js", :vendored_core_pretty_text
+
 module ::DiscourseVideoStream
   PLUGIN_NAME = "discourse-video-stream"
 end

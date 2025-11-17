@@ -5,27 +5,22 @@ function initializeVideoUploader(api) {
   const modal = api.container.lookup("service:modal");
   const siteSettings = api.container.lookup("service:site-settings");
 
-  api.onToolbarCreate((toolbar) => {
-    toolbar.addButton({
-      id: "video-uploader",
-      group: "extras",
-      icon: "video",
-      title: "video_stream.upload_video",
-      shortcut: "ALT+V",
-      sendAction(toolbarEvent) {
-        modal.show(VideoUploadModal, {
-          model: {
-            toolbarEvent,
-          },
-        });
-      },
-      condition() {
-        return (
-          siteSettings.video_stream_enabled &&
-          siteSettings.video_stream_customer_subdomain
-        );
-      },
-    });
+  api.addComposerToolbarPopupMenuOption({
+    icon: "video",
+    label: "video_stream.upload_video",
+    action: (toolbarEvent) => {
+      modal.show(VideoUploadModal, {
+        model: {
+          toolbarEvent,
+        },
+      });
+    },
+    condition: () => {
+      return (
+        siteSettings.video_stream_enabled &&
+        siteSettings.video_stream_customer_subdomain
+      );
+    },
   });
 }
 

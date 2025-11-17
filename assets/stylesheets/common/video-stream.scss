@@ -63,3 +63,20 @@
   aspect-ratio: 16/9;
   border: 0;
 }
+
+.video-stream-container {
+  width: 100%;
+  max-width: 100%;
+  margin: 1em 0;
+  background: var(--primary-very-low);
+  border-radius: 4px;
+  overflow: hidden;
+
+  .video-stream-player {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16/9;
+    display: block;
+    background: #000;
+  }
+}

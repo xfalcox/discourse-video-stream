@@ -6,6 +6,7 @@ import { service } from "@ember/service";
 import { htmlSafe } from "@ember/template";
 import DButton from "discourse/components/d-button";
 import DModal from "discourse/components/d-modal";
+import loadScript from "discourse/lib/load-script";
 import { i18n } from "discourse-i18n";
 
 const BYTES_IN_MEGABYTE = 1_000_000;
@@ -14,7 +15,7 @@ const TUS_ENDPOINT = "/video-stream/upload-url.json";
 
 /**
  * @component video-upload-modal
- * @param {{ toolbarEvent?: { addText?: (value: string) => void } }} this.args.model
+ * @param {{ toolbarEvent?: { addText?: (value: string) => void }, preselectedFile?: File }} this.args.model
  */
 export default class VideoUploadModal extends Component {
   @service siteSettings;
@@ -32,6 +33,16 @@ export default class VideoUploadModal extends Component {
 
   activeUpload = null;
   latestStreamMediaId = null;
+
+  constructor() {
+    super(...arguments);
+
+    // If a preselected file was provided, start uploading it immediately
+    const preselectedFile = this.args.model?.preselectedFile;
+    if (preselectedFile) {
+      this.uploadFile(preselectedFile);
+    }
+  }
 
   willDestroy() {
     super.willDestroy?.();
@@ -188,23 +199,19 @@ export default class VideoUploadModal extends Component {
       return;
     }
 
-    const subdomain = this.customerSubdomain;
-    const uid = encodeURIComponent(result.uid);
-    const embedUrl = `https://${subdomain}/${uid}/iframe`;
-    const iframe = `\n\n<iframe class="cf-video-stream-embed" data-video-stream="true" src="${embedUrl}" title="${i18n(
-      "video_stream.embed_title"
-    )}" allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" allowfullscreen></iframe>\n\n`;
+    const uid = result.uid;
+    const bbcode = `\n\n[video-stream id="${uid}"]\n\n`;
 
-    toolbarEvent.addText(iframe);
+    toolbarEvent.addText(bbcode);
     this.args.closeModal?.();
   }
 
-  _startTusUpload(file) {
+  async _startTusUpload(file) {
     this.resetUploaderState({ abortUpload: true });
     this.isUploading = true;
     this.uploadProgress = 0;
 
-    const TusUpload = this._getTusUploadClass();
+    const TusUpload = await this._getTusUploadClass();
     if (!TusUpload) {
       throw new Error("tus-js-client global is unavailable");
     }
@@ -311,9 +318,16 @@ export default class VideoUploadModal extends Component {
     return metadata;
   }
 
-  _getTusUploadClass() {
+  async _getTusUploadClass() {
     if (typeof window === "undefined") {
       return null;
+    }
+
+    // Load vendored tus-js-client if not already loaded
+    if (!window.tus?.Upload) {
+      await loadScript(
+        "/plugins/discourse-video-stream/javascripts/tus.min.js"
+      );
     }
 
     return window?.tus?.Upload || null;
@@ -337,20 +351,16 @@ export default class VideoUploadModal extends Component {
   }
 
   /**
-   * @action
-   * @param {InputEvent & { target: HTMLInputElement }} event
+   * Upload a file directly (used for preselected files)
+   * @param {File} file
    */
-  @action
-  uploadVideo(event) {
-    const file = event.target?.files?.[0];
-
+  uploadFile(file) {
     if (
       !this.validateFilePresence(file) ||
       !this.validateConfiguration() ||
       !this.validateExtension(file) ||
       !this.validateFileSize(file)
     ) {
-      this.resetInputValue(event.target);
       return;
     }
 
@@ -360,9 +370,18 @@ export default class VideoUploadModal extends Component {
       // eslint-disable-next-line no-console
       console.error("Video upload failed", error);
       this.showToast("video_stream.upload_failed");
-    } finally {
-      this.resetInputValue(event.target);
     }
+  }
+
+  /**
+   * @action
+   * @param {InputEvent & { target: HTMLInputElement }} event
+   */
+  @action
+  uploadVideo(event) {
+    const file = event.target?.files?.[0];
+    this.uploadFile(file);
+    this.resetInputValue(event.target);
   }
 
   <template>
