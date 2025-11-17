@@ -10,7 +10,7 @@ describe PrettyText do
       markdown = <<~MD
         Check out this video:
 
-        [video-stream id="abc123def456"]
+        [video-stream id="abc123def456"][/video-stream]
 
         Pretty cool!
       MD
@@ -22,7 +22,7 @@ describe PrettyText do
     end
 
     it "handles video IDs with hyphens and underscores" do
-      markdown = '[video-stream id="test_video-123"]'
+      markdown = '[video-stream id="test_video-123"][/video-stream]'
 
       cooked = PrettyText.cook(markdown)
 
@@ -34,11 +34,11 @@ describe PrettyText do
       markdown = <<~MD
         First video:
 
-        [video-stream id="video1"]
+        [video-stream id="video1"][/video-stream]
 
         Second video:
 
-        [video-stream id="video2"]
+        [video-stream id="video2"][/video-stream]
       MD
 
       cooked = PrettyText.cook(markdown.strip)
@@ -48,17 +48,17 @@ describe PrettyText do
       expect(cooked.scan(/<div class="video-stream-container"/).count).to eq(2)
     end
 
-    it "does not process malformed BBCode" do
-      markdown = "[video-stream id=abc123]" # Missing quotes
+    it "handles BBCode without quotes around attribute value" do
+      markdown = "[video-stream id=abc123][/video-stream]"
 
       cooked = PrettyText.cook(markdown)
 
-      expect(cooked).not_to include('<div class="video-stream-container"')
-      expect(cooked).to include("[video-stream id=abc123]")
+      expect(cooked).to include('<div class="video-stream-container"')
+      expect(cooked).to include('data-video-id="abc123"')
     end
 
     it "does not process BBCode with invalid characters in ID" do
-      markdown = '[video-stream id="test@video"]' # @ is not allowed
+      markdown = '[video-stream id="test@video"][/video-stream]' # @ is not allowed
 
       cooked = PrettyText.cook(markdown)
 
@@ -69,7 +69,7 @@ describe PrettyText do
       markdown = <<~MD
         Here is some text before.
 
-        [video-stream id="abc123"]
+        [video-stream id="abc123"][/video-stream]
 
         And some text after.
       MD
@@ -82,13 +82,60 @@ describe PrettyText do
     end
 
     it "works inline with other content" do
-      markdown = "Watch this: [video-stream id=\"demo123\"] and tell me what you think!"
+      markdown =
+        "Watch this: [video-stream id=\"demo123\"][/video-stream] and tell me what you think!"
 
       cooked = PrettyText.cook(markdown)
 
       expect(cooked).to include("Watch this:")
       expect(cooked).to include('<div class="video-stream-container"')
       expect(cooked).to include("and tell me what you think!")
+    end
+
+    it "handles block-style format with newline after opening tag" do
+      markdown = <<~MD
+        [video-stream id="block123"]
+        [/video-stream]
+      MD
+
+      cooked = PrettyText.cook(markdown.strip)
+
+      expect(cooked).to include('<div class="video-stream-container"')
+      expect(cooked).to include('data-video-id="block123"')
+    end
+
+    it "handles block-style format in context" do
+      markdown = <<~MD
+        Here is a video:
+
+        [video-stream id="test456"]
+        [/video-stream]
+
+        What do you think?
+      MD
+
+      cooked = PrettyText.cook(markdown.strip)
+
+      expect(cooked).to include("Here is a video:")
+      expect(cooked).to include('<div class="video-stream-container"')
+      expect(cooked).to include('data-video-id="test456"')
+      expect(cooked).to include("What do you think?")
+    end
+
+    it "handles mixed inline and block formats" do
+      markdown = <<~MD
+        Inline: [video-stream id="inline1"][/video-stream]
+
+        Block:
+        [video-stream id="block1"]
+        [/video-stream]
+      MD
+
+      cooked = PrettyText.cook(markdown.strip)
+
+      expect(cooked).to include('data-video-id="inline1"')
+      expect(cooked).to include('data-video-id="block1"')
+      expect(cooked.scan(/<div class="video-stream-container"/).count).to eq(2)
     end
   end
 end

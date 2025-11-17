@@ -1,21 +1,49 @@
 /**
  * Custom BBCode for Cloudflare Stream video embeds
- * Converts [video-stream id="video_id"] to a video container that will be initialized with Shaka Player
+ * Converts [video-stream id="video_id"][/video-stream] to a video container that will be initialized with Shaka Player
+ * Supports both inline and block formats
  */
 
-function addVideoStream(buffer, matches, state) {
-  const videoId = matches[1];
-
-  let token = new state.Token("div_open", "div", 1);
-  token.attrs = [
-    ["class", "video-stream-container"],
-    ["data-video-id", videoId],
-  ];
-  buffer.push(token);
-
-  token = new state.Token("div_close", "div", -1);
-  buffer.push(token);
+// Validates video ID - allows alphanumeric, hyphens, and underscores only
+function isValidVideoId(videoId) {
+  return videoId && /^[a-zA-Z0-9_-]+$/.test(videoId);
 }
+
+const blockRule = {
+  tag: "video-stream",
+
+  wrap(token, tagInfo) {
+    const videoId = tagInfo.attrs?.id;
+
+    if (!isValidVideoId(videoId)) {
+      return false;
+    }
+
+    token.attrs = [
+      ["class", "video-stream-container"],
+      ["data-video-id", videoId],
+    ];
+
+    return true;
+  },
+};
+
+const inlineRule = {
+  tag: "video-stream",
+
+  replace(state, tagInfo) {
+    const videoId = tagInfo.attrs?.id;
+
+    if (!isValidVideoId(videoId)) {
+      return false;
+    }
+
+    let token = state.push("html_inline", "", 0);
+    token.content = `<div class="video-stream-container" data-video-id="${videoId}"></div>`;
+
+    return true;
+  },
+};
 
 export function setup(helper) {
   helper.allowList([
@@ -28,11 +56,7 @@ export function setup(helper) {
   ]);
 
   helper.registerPlugin((md) => {
-    const rule = {
-      matcher: /\[video-stream id="([a-zA-Z0-9_-]+)"\]/,
-      onMatch: addVideoStream,
-    };
-
-    md.core.textPostProcess.ruler.push("video-stream", rule);
+    md.block.bbcode.ruler.push("video-stream", blockRule);
+    md.inline.bbcode.ruler.push("video-stream", inlineRule);
   });
 }

@@ -68,15 +68,116 @@
   width: 100%;
   max-width: 100%;
   margin: 1em 0;
-  background: var(--primary-very-low);
+  background: #000;
   border-radius: 4px;
   overflow: hidden;
+  position: relative;
+  aspect-ratio: 16/9;
 
   .video-stream-player {
     width: 100%;
-    height: auto;
-    aspect-ratio: 16/9;
+    height: 100%;
     display: block;
     background: #000;
+  }
+
+  // Shaka Player creates a wrapper around the video element
+  // This wrapper needs proper positioning to overlay controls
+  .shaka-video-container {
+    width: 100%;
+    height: 100%;
+    position: relative !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+  }
+
+  // Controls overlay styling with Discourse theme integration
+  .shaka-controls-container {
+    // Ensure controls use proper flex layout
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-end !important;
+  }
+
+  // Bottom controls wrapper (contains seek bar + button panel)
+  .shaka-bottom-controls {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 96% !important;
+  }
+
+  // Seek bar should be above the button panel
+  .shaka-seek-bar-container {
+    order: 1;
+    margin-bottom: 0.5em;
+
+    // Seek bar colors with Discourse theme
+    .shaka-range-element::-webkit-slider-thumb {
+      background: var(--tertiary) !important;
+    }
+
+    .shaka-range-element::-moz-range-thumb {
+      background: var(--tertiary) !important;
+    }
+  }
+
+  // Button panel below the seek bar
+  .shaka-controls-button-panel {
+    order: 2;
+
+    // Discourse theme color integration for buttons
+    button {
+      color: var(--primary-very-high) !important;
+
+      &:hover {
+        background-color: rgb(var(--tertiary-rgb), 0.2) !important;
+      }
+    }
+  }
+
+  // Overflow menu styling
+  .shaka-overflow-menu,
+  .shaka-settings-menu {
+    background: var(--secondary) !important;
+    box-shadow: var(--shadow-dropdown);
+
+    button {
+      color: var(--primary) !important;
+
+      &:hover {
+        background: var(--primary-low) !important;
+      }
+    }
+
+    .shaka-current-selection-span {
+      color: var(--primary-medium) !important;
+    }
+  }
+
+  // Volume bar styling
+  .shaka-volume-bar-container {
+    .shaka-range-element::-webkit-slider-thumb {
+      background: var(--tertiary) !important;
+    }
+
+    .shaka-range-element::-moz-range-thumb {
+      background: var(--tertiary) !important;
+    }
+  }
+
+  // Play button styling
+  .shaka-play-button {
+    background-color: rgb(255, 255, 255, 0.95) !important;
+
+    &:hover {
+      background-color: rgb(var(--tertiary-rgb), 0.95) !important;
+    }
   }
 }
