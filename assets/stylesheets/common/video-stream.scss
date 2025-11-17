@@ -58,10 +58,9 @@
   }
 }
 
-.cf-video-stream-embed {
-  width: 100%;
-  aspect-ratio: 16/9;
-  border: 0;
+// Override Discourse's topic-post.scss max-height constraint
+.topic-body .cooked .video-stream-container {
+  max-height: none;
 }
 
 .video-stream-container {
