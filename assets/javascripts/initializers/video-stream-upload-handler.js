@@ -1,4 +1,5 @@
 import { withPluginApi } from "discourse/lib/plugin-api";
+import VideoUploadModal from "../discourse/components/modal/video-upload-modal";
 
 const BYTES_IN_MEGABYTE = 1_000_000;
 
@@ -68,30 +69,20 @@ function initializeVideoUploadHandler(api) {
       return true;
     }
 
-    // Import the modal dynamically to avoid circular dependencies
-    import("../discourse/components/modal/video-upload-modal").then(
-      (module) => {
-        const VideoUploadModal = module.default;
-
-        filesToIntercept.forEach((file) => {
-          modal.show(VideoUploadModal, {
-            model: {
-              toolbarEvent: {
-                addText: (text) => {
-                  const reply =
-                    composerUploadInstance.composerModel.reply || "";
-                  composerUploadInstance.composerModel.set(
-                    "reply",
-                    reply + text
-                  );
-                },
-              },
-              preselectedFile: file,
+    // Show modal for each intercepted file
+    filesToIntercept.forEach((file) => {
+      modal.show(VideoUploadModal, {
+        model: {
+          toolbarEvent: {
+            addText: (text) => {
+              const reply = composerUploadInstance.composerModel.reply || "";
+              composerUploadInstance.composerModel.set("reply", reply + text);
             },
-          });
-        });
-      }
-    );
+          },
+          preselectedFile: file,
+        },
+      });
+    });
 
     // Return false to prevent normal upload processing for intercepted files
     return false;

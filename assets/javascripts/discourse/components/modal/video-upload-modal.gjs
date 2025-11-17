@@ -200,7 +200,7 @@ export default class VideoUploadModal extends Component {
     }
 
     const uid = result.uid;
-    const bbcode = `\n\n[video-stream id="${uid}"]\n\n`;
+    const bbcode = `\n\n[video-stream id="${uid}"]\n[/video-stream]\n\n`;
 
     toolbarEvent.addText(bbcode);
     this.args.closeModal?.();
