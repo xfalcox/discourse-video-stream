@@ -58,11 +58,6 @@
   }
 }
 
-// Override Discourse's topic-post.scss max-height constraint
-.topic-body .cooked .video-stream-container {
-  max-height: none;
-}
-
 .video-stream-container {
   width: 100%;
   max-width: 100%;
@@ -94,6 +89,7 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
+      max-height: none; // Override Discourse's topic-post.scss max-height constraint
     }
   }
 
