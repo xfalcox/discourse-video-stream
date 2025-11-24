@@ -8,7 +8,9 @@ en:
     video_stream_max_file_size: "Maximum allowed video file size in megabytes"
     video_stream_intercept_native_uploads: "Automatically intercept native video uploads and redirect to Cloudflare Stream"
     video_stream_intercept_threshold_mb: "Minimum video file size (MB) to intercept and upload to Cloudflare Stream instead of standard uploads"
+    video_stream_enable_live_streams: "Enable live stream creation with RTMPS broadcasting support"
   video_stream:
     errors:
       misconfigured: "Video streaming is not configured yet. Please update the site settings and try again."
       upload_url: "Unable to request an upload URL from Cloudflare Stream. Please try again later."
+      create_live_input: "Unable to create live stream. Please try again later."

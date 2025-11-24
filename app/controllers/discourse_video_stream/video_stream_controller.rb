@@ -10,6 +10,20 @@ module DiscourseVideoStream
     before_action :ensure_feature_enabled
     before_action :ensure_can_upload_to_stream
 
+    def create_live_stream
+      context = LiveStreamService.call(params: { name: params[:name] })
+
+      if context.failure?
+        render_json_error(
+          context[:error] || I18n.t("video_stream.errors.create_live_input"),
+          status: context[:status] || 422,
+        )
+        return
+      end
+
+      render json: context[:live_input]
+    end
+
     def upload_url
       context = VideoUploadService.call(params: upload_request_headers)
 

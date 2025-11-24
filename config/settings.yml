@@ -27,3 +27,6 @@ plugins:
     client: true
     min: 1
     max: 2000
+  video_stream_enable_live_streams:
+    default: false
+    client: true
