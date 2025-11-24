@@ -21,5 +21,5 @@ require_relative "lib/discourse_video_stream/engine"
 
 after_initialize do
   register_svg_icon("video")
-  register_svg_icon("signal-stream")
+  register_svg_icon("tower-broadcast")
 end

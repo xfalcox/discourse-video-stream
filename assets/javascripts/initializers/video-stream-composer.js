@@ -25,7 +25,7 @@ function initializeVideoUploader(api) {
   });
 
   api.addComposerToolbarPopupMenuOption({
-    icon: "signal-stream",
+    icon: "tower-broadcast",
     label: "video_stream.create_live_stream",
     action: (toolbarEvent) => {
       modal.show(LiveStreamModal, {
