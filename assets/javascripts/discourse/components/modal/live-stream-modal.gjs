@@ -38,7 +38,9 @@ export default class LiveStreamModal extends Component {
 
   /**
    * Insert the video embed BBCode into the composer
+   * @action
    */
+  @action
   insertEmbed() {
     const toolbarEvent = this.args.model?.toolbarEvent;
 
