@@ -19,4 +19,7 @@ end
 
 require_relative "lib/discourse_video_stream/engine"
 
-after_initialize { register_svg_icon("video") }
+after_initialize do
+  register_svg_icon("video")
+  register_svg_icon("signal-stream")
+end
